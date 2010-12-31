@@ -1,8 +1,6 @@
 package Router;
 use Boose;
 
-extends 'Boose::Base';
-
 has 'prefix';
 
 use Router::Pattern;

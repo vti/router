@@ -1,8 +1,6 @@
 package Router::Pattern;
 use Boose;
 
-extends 'Boose::Base';
-
 has 'pattern';
 has 'defaults'    => sub { {} };
 has 'constraints' => sub { {} };
