@@ -36,7 +36,7 @@ sub unmatched_situations : Test(1) {
     ok !$r->match('foo/bar');
 }
 
-sub unbalanced_parenthenes : Test(1) {
+sub unbalanced_parentheses : Test(1) {
     my $self = shift;
 
     my $r = $self->_build_object;
@@ -126,7 +126,7 @@ sub match_with_optional_nested : Test(3) {
     is_deeply $m->params => {year => 2009, month => 12, day => 10};
 }
 
-sub globbing : Test(4) {
+sub globbing : Test(3) {
     my $self = shift;
 
     my $r = $self->_build_object;
@@ -135,9 +135,6 @@ sub globbing : Test(4) {
     $r->add_route('*a/foo/*b');
 
     my $m = $r->match('photos/foo/bar/baz');
-    is_deeply $m->params => {other => 'foo/bar/baz'};
-
-    $m = $r->match('photos/foo/bar/baz');
     is_deeply $m->params => {other => 'foo/bar/baz'};
 
     $m = $r->match('books/some/section/last-words-a-memoir');
