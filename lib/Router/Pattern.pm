@@ -10,8 +10,6 @@ has 'prefix';
 
 use Router::Match;
 
-require Carp;
-
 my $TOKEN = '[^\/()]+';
 
 sub compile {
@@ -33,19 +31,29 @@ sub compile {
 
     my $par_depth = 0;
 
+    my @parts;
+
     pos $pattern = 0;
     while (pos $pattern < length $pattern) {
         if ($pattern =~ m{ \G /:($TOKEN) }gcxms) {
             $re .= '/';
 
             my $name = $1;
+            my $constraint;
             if (exists $self->constraints->{$name}) {
-                my $constraint = $self->constraints->{$name};
+                $constraint = $self->constraints->{$name};
                 $re .= "($constraint)";
             }
             else {
                 $re .= '([^\/]+)';
             }
+
+            push @parts,
+              { type       => 'capture',
+                name       => $name,
+                constraint => $constraint ? qr/^$constraint$/ : undef,
+                optional   => $par_depth
+              };
 
             push @{$self->{captures}}, $name;
         }
@@ -56,6 +64,8 @@ sub compile {
 
             $re .= '(.*)';
 
+            push @parts, {type => 'glob', name => $name};
+
             push @{$self->{captures}}, $name;
         }
         elsif ($pattern =~ m{ \G /($TOKEN) }gcxms) {
@@ -63,6 +73,8 @@ sub compile {
 
             my $text = $1;
             $re .= quotemeta $text;
+
+            push @parts, {type => 'text', text => $text};
         }
         elsif ($pattern =~ m{ \G \( }gcxms) {
             $par_depth++;
@@ -82,16 +94,17 @@ sub compile {
     }
 
     if ($par_depth != 0) {
-        Carp::croak("Parenthenes are not balanced in pattern '$pattern'");
+        throw("Parentheses are not balanced in pattern '$pattern'");
     }
 
     try {
         $re = qr/\A $re \z/xmsi;
     }
     catch {
-        Carp::croak("Can't compile pattern: '$pattern'");
+        throw("Can't compile pattern: '$pattern'");
     };
 
+    $self->{parts} = [@parts];
     $self->set_pattern($re);
 
     return $self;
@@ -135,9 +148,57 @@ sub match {
 }
 
 sub build_path {
-    my $self = shift;
+    my $self   = shift;
+    my %params = @_;
 
-    return 'foo';
+    $self->compile;
+
+    my @parts;
+
+    my $optional_depth = 0;
+
+    foreach my $part (@{$self->{parts}}) {
+        my $type = $part->{type};
+        my $name = $part->{name};
+
+        if ($type eq 'capture') {
+            if ($part->{optional} && exists $params{$name}) {
+                $optional_depth = $part->{optional};
+            }
+
+            if (!exists $params{$name}) {
+                next
+                  if $part->{optional} && $part->{optional} > $optional_depth;
+
+                throw(
+                    "Required param '$part->{name}' was not passed when building a path"
+                );
+            }
+
+            my $param = $params{$name};
+
+            if (defined(my $constraint = $part->{constraint})) {
+                throw("Param '$name' fails a constraint")
+                  unless $param =~ m/^$constraint$/;
+            }
+
+            push @parts, $param;
+        }
+        elsif ($type eq 'glob') {
+            my $name = $part->{name};
+
+            throw(
+                "Required glob param '$name' was not passed when building a path"
+            ) unless exists $params{$name};
+
+            push @parts, $params{$name};
+        }
+        elsif ($type eq 'text') {
+            push @parts, $part->{text};
+        }
+    }
+
+    return join '/' => @parts;
 }
 
 sub _match_method {

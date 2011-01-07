@@ -121,7 +121,7 @@ sub build_path {
 
     foreach my $pattern (@{$self->{patterns}}) {
         if ($pattern->name eq $name) {
-            return $pattern->build_path;
+            return $pattern->build_path(@_);
         }
     }
 
