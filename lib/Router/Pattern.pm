@@ -35,9 +35,10 @@ sub compile {
 
     pos $pattern = 0;
     while (pos $pattern < length $pattern) {
-        if ($pattern =~ m{ \G /:($TOKEN) }gcxms) {
+        if ($pattern =~ m{ \G \/ }gcxms) {
             $re .= '/';
-
+        }
+        elsif ($pattern =~ m{ \G :($TOKEN) }gcxms) {
             my $name = $1;
             my $constraint;
             if (exists $self->constraints->{$name}) {
@@ -57,9 +58,7 @@ sub compile {
 
             push @{$self->{captures}}, $name;
         }
-        elsif ($pattern =~ m{ \G /\*($TOKEN) }gcxms) {
-            $re .= '/';
-
+        elsif ($pattern =~ m{ \G \*($TOKEN) }gcxms) {
             my $name = $1;
 
             $re .= '(.*)';
@@ -68,9 +67,7 @@ sub compile {
 
             push @{$self->{captures}}, $name;
         }
-        elsif ($pattern =~ m{ \G /($TOKEN) }gcxms) {
-            $re .= '/';
-
+        elsif ($pattern =~ m{ \G ($TOKEN) }gcxms) {
             my $text = $1;
             $re .= quotemeta $text;
 
@@ -84,13 +81,7 @@ sub compile {
             $par_depth--;
             $re .= ' )?';
         }
-        else {
-            my $sym = substr($pattern, pos($pattern), 1);
 
-            $re .= $sym eq '/' ? $sym : quotemeta($sym);
-
-            pos($pattern)++;
-        }
     }
 
     if ($par_depth != 0) {
