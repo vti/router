@@ -97,7 +97,7 @@ sub match_with_constraints : Test(2) {
 
 }
 
-sub match_with_optional : Test(7) {
+sub match_with_optional : Test(10) {
     my $self = shift;
 
     my $r = $self->_build_object;
@@ -132,6 +132,19 @@ sub match_with_optional : Test(7) {
 
     $m = $r->match('2009//2');
     is_deeply $m->params => {year => 2009, month => undef, day => 2};
+
+
+    $r = $self->_build_object;
+    $r->add_route(':year/month(:month)/:day');
+
+    $m = $r->match('2009/12/2');
+    ok not defined $m;
+
+    $m = $r->match('2009/month/2');
+    is_deeply $m->params => {year => 2009, month => undef, day => 2};
+
+    $m = $r->match('2009/month08/2');
+    is_deeply $m->params => {year => 2009, month => '08', day => 2};
 
 
 }
